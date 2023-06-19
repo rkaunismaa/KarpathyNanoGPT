@@ -15,7 +15,8 @@ n_embd = 32
 
 torch.manual_seed(1337)
 
-dataFile = "/tf/All/Data/Documents/Github/rkaunismaa/KarpathyNanoGPT/data/shakespeare/input.txt"
+# dataFile = "/tf/All/Data/Documents/Github/rkaunismaa/KarpathyNanoGPT/data/shakespeare/input.txt"
+dataFile = "data/shakespeare/input.txt"
 
 # wget https://raw.githubusercontent.com/karpathy/char-rnn/master/data/tinyshakespeare/input.txt
 with open(dataFile, 'r', encoding='utf-8') as f:
