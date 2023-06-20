@@ -3,18 +3,32 @@ import torch.nn as nn
 from torch.nn import functional as F
 
 # hyperparameters
-batch_size = 32 # how many independent sequences will we process in parallel?
-block_size = 8 # what is the maximum context length for predictions?
+# batch_size = 32 # how many independent sequences will we process in parallel?
+# we changed the above after adding in dropout
+batch_size = 64
+# block_size = 8 # what is the maximum context length for predictions?
+# we changed the above after adding in dropout
+block_size = 256
 # max_iters = 3000
 # we also increased the iterations when we lowered the learning rate
 max_iters = 5000
-eval_interval = 300
+# eval_interval = 300
+# we changed the above after adding in dropout
+eval_interval = 500
 # learning_rate = 1e-2
 # we lowered the learning rate after adding the self attention head to the model
-learning_rate = 1e-3
+# learning_rate = 1e-3
+# we changed the above after adding in dropout
+learning_rate = 3e-4
 device = 'cuda' if torch.cuda.is_available() else 'cpu'
 eval_iters = 200
-n_embd = 32
+# n_embd = 32
+# we changed the above after adding in dropout
+n_embd = 384
+# we added these parms after we added dropout ...
+n_head = 6
+n_layer = 6
+dropout = 0.2
 # ------------
 
 torch.manual_seed(1337)
@@ -74,6 +88,8 @@ class Head(nn.Module):
         self.key = nn.Linear(n_embd, head_size, bias=False)
         self.value = nn.Linear(n_embd, head_size, bias=False)
         self.register_buffer('tril', torch.tril(torch.ones(block_size, block_size)))
+
+        self.dropout = nn.Dropout(dropout)
                              
     def forward(self, x):
         B, T, C = x.shape
@@ -84,6 +100,8 @@ class Head(nn.Module):
         wei = q @ k.transpose(-2, -1) * C**-0.5 # (B, T, C) @ (B, C, T) -> (B, T, T)
         wei = wei.masked_fill(self.tril[:T, :T] == 0, float('-inf')) # (B, T, T)
         wei = F.softmax(wei, dim=-1) # (B, T, T)
+        # we added this after adding in self.dropout
+        wei = self.dropout(wei)
         # perform the weighted aggregation of the values
         out = wei @ v # (B, T, T) @ (B, T, C) -> (B, T, C)
         return out
@@ -97,12 +115,15 @@ class MultiHeadAttention(nn.Module):
         self.heads = nn.ModuleList( [Head(head_size) for _ in range(num_heads)] )
         # we added this after implement residual connections in Block
         self.proj = nn.Linear(n_embd, n_embd)
+        self.dropout = nn.Dropout(dropout)
 
     def forward(self, x):
         # return torch.cat([h(x) for h in self.heads], dim=-1) # concatenate over the channel dimension (B, T, C) = -1
         # we commented out the above and did this after we implemented residual connections ...
         out = torch.cat([h(x) for h in self.heads], dim=-1) # same as above ... but then we do ..
-        out = self.proj(out)
+        # out = self.proj(out)
+        # we added this after adding in droput ...
+        out = self.dropout(self.proj(out))
         return out
     
 class FeedForward(nn.Module):
@@ -118,7 +139,9 @@ class FeedForward(nn.Module):
             # but then we did one small tweak to this to reflect what was done in the Vaswani paper ...
             nn.Linear(n_embd, 4 * n_embd),
             nn.ReLU(),
-            nn.Linear(4 * n_embd, n_embd)
+            nn.Linear(4 * n_embd, n_embd),
+            # we also added dropout after we removed the 4 hard coding in BigramLanguageModel ...
+            nn.Dropout(dropout)
 
         )
 
@@ -169,12 +192,15 @@ class BigramLanguageModel(nn.Module):
         # self.ffwd = FeedForward(n_embd)
         # this layer was added after we coded the Block layer
         # and then later we appended the LayerNorm layer ... 
-        self.blocks =  nn.Sequential(
-            Block(n_embd, n_head=4),
-            Block(n_embd, n_head=4),
-            Block(n_embd, n_head=4),
-            nn.LayerNorm(n_embd)
-        )
+        # self.blocks =  nn.Sequential(
+        #     Block(n_embd, n_head=4),
+        #     Block(n_embd, n_head=4),
+        #     Block(n_embd, n_head=4),
+        #     nn.LayerNorm(n_embd)
+        # )
+        # let's get rid of that fugly hard coding above, shall we ... 
+        self.blocks = nn.Sequential(* [Block(n_embd, n_head=n_head) for _ in range(n_layer) ])
+        self.ln_f = nn.LayerNorm(n_embd) # final layer norm ...
         # ... and to go from token embeddings to logits we will need a linear layer ...
         self.lm_head = nn.Linear(n_embd, vocab_size)
 
