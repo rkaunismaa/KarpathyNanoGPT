@@ -111,10 +111,15 @@ class FeedForward(nn.Module):
     def __init__(self, n_embd):
         super().__init__()
         self.net = nn.Sequential(
-            nn.Linear(n_embd, n_embd),
-            nn.ReLU(),
+            # nn.Linear(n_embd, n_embd),
+            # nn.ReLU(),
             # we added this after we added residual connections ...
-            nn.Linear(n_embd, n_embd)
+            # nn.Linear(n_embd, n_embd)
+            # but then we did one small tweak to this to reflect what was done in the Vaswani paper ...
+            nn.Linear(n_embd, 4 * n_embd),
+            nn.ReLU(),
+            nn.Linear(4 * n_embd, n_embd)
+
         )
 
     def forward(self, x):
