@@ -116,6 +116,7 @@ class Block(nn.Module):
     """ Transformer block: communication followed by computation """
 
     def __init__(self, n_embd, n_head):
+        # n_embd: embedding dimension, n_head: the number of head's we would like to use
         super().__init__()
         head_size = n_embd // n_head
         self.sa = MultiHeadAttention(n_head, head_size)
@@ -141,9 +142,15 @@ class BigramLanguageModel(nn.Module):
         # this Head layer was added after we coded it ..
         # self.sa_head = Head(n_embd)
         # this layer was added after coding MultiHeadAttention ...
-        self.sa_heads = MultiHeadAttention(4, n_embd//4) # i.e. 4 heads of 8-dimensional self-attention
+        # self.sa_heads = MultiHeadAttention(4, n_embd//4) # i.e. 4 heads of 8-dimensional self-attention
         # this layer was added after we coded the FeedForward layer
-        self.ffwd = FeedForward(n_embd)
+        # self.ffwd = FeedForward(n_embd)
+        # this layer was added after we coded the Block layer
+        self.blocks =  nn.Sequential(
+            Block(n_embd, n_head=4),
+            Block(n_embd, n_head=4),
+            Block(n_embd, n_head=4)
+        )
         # ... and to go from token embeddings to logits we will need a linear layer ...
         self.lm_head = nn.Linear(n_embd, vocab_size)
 
@@ -161,9 +168,11 @@ class BigramLanguageModel(nn.Module):
         # and we now pass the output x from above into the self attention head ..
         # x = self.sa_head(x) # apply one head of self attention. (B, T, C)
         # we added this after adding in MultiHeadAttention sa_heads ..
-        x = self.sa_heads(x) # apply one head of self-attention (B, T, C)
+        # x = self.sa_heads(x) # apply one head of self-attention (B, T, C)
         # we added this after adding in the FeedForward layer ...
-        x = self.ffwd(x) # (B, T, C)
+        # x = self.ffwd(x) # (B, T, C)
+        # we added this layer after coding the Blocks layer ...
+        x = self.blocks(x) # (B, T, C)
         # ... and now that we have added the linear layer above, we can now get the logits by ...
         # logits = self.lm_head(tok_emb) # (B, T, vocab_size)
         logits = self.lm_head(x) # (B, T, vocab_size)
