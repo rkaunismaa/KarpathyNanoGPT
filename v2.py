@@ -17,8 +17,6 @@ eval_iters = 200
 n_embd = 32
 # ------------
 
-# resume the video at 1:21:59 ...
-
 torch.manual_seed(1337)
 
 # dataFile = "/tf/All/Data/Documents/Github/rkaunismaa/KarpathyNanoGPT/data/shakespeare/input.txt"
@@ -89,6 +87,18 @@ class Head(nn.Module):
         # perform the weighted aggregation of the values
         out = wei @ v # (B, T, T) @ (B, T, C) -> (B, T, C)
         return out
+    
+
+class MultiHeadAttention(nn.Module):
+
+    def __init__(self, num_heads, head_size):
+        super().__init__()
+        self.heads = nn.ModuleList( [Head(head_size) for _ in range(num_heads)] )
+
+    def forward(self, x):
+        return torch.cat([h(x) for h in self.heads], dim=-1)
+
+
 
 # super simple bigram model
 class BigramLanguageModel(nn.Module):
