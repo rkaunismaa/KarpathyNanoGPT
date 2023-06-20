@@ -134,13 +134,19 @@ class Block(nn.Module):
         head_size = n_embd // n_head
         self.sa = MultiHeadAttention(n_head, head_size)
         self.ffwd = FeedForward(n_embd)
+        # add in 2 normalization layers
+        self.ln1 = nn.LayerNorm(n_embd)
+        self.ln2 = nn.LayerNorm(n_embd)
 
     def forward(self, x):
         # x = self.sa(x)
         # x = self.ffwd(x)
         # This is how we implement a residual connection ... simple, right!?
-        x = x + self.sa(x)
-        x = x + self.ffwd(x)
+        # x = x + self.sa(x)
+        # x = x + self.ffwd(x)
+        # This is what we did after adding in the 2 normalization layers
+        x = x + self.sa(self.ln1(x))
+        x = x + self.ffwd(self.ln2(x))
         return x
 
 
