@@ -158,7 +158,7 @@ class BigramLanguageModel(nn.Module):
             
             # the above changed after we added Head ...
             # crop ids to the last block_size tokens
-            idx_cond = idx[:, -block_size]
+            idx_cond = idx[:, -block_size:]
             # get the prediction
             logits, loss = self(idx_cond)
             # focus on only the last time step
