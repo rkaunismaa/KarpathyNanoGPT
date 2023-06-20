@@ -98,7 +98,19 @@ class MultiHeadAttention(nn.Module):
 
     def forward(self, x):
         return torch.cat([h(x) for h in self.heads], dim=-1) # concatenate over the channel dimension (B, T, C) = -1
+    
+class FeedForward(nn.Module):
+    """ a simple linear layer followed by a non-linearity """
 
+    def __init__(self, n_embd):
+        super().__init__()
+        self.net = nn.Sequential(
+            nn.Linear(n_embd, n_embd),
+            nn.ReLU()
+        )
+
+    def forward(self, x):
+        return self.net(x)
 
 
 # super simple bigram model
@@ -116,6 +128,8 @@ class BigramLanguageModel(nn.Module):
         # self.sa_head = Head(n_embd)
         # this layer was added after coding MultiHeadAttention ...
         self.sa_heads = MultiHeadAttention(4, n_embd//4) # i.e. 4 heads of 8-dimensional self-attention
+        # this layer was added after we coded the FeedForward layer
+        self.ffwd = FeedForward(n_embd)
         # ... and to go from token embeddings to logits we will need a linear layer ...
         self.lm_head = nn.Linear(n_embd, vocab_size)
 
@@ -134,6 +148,8 @@ class BigramLanguageModel(nn.Module):
         # x = self.sa_head(x) # apply one head of self attention. (B, T, C)
         # we added this after adding in MultiHeadAttention sa_heads ..
         x = self.sa_heads(x) # apply one head of self-attention (B, T, C)
+        # we added this after adding in the FeedForward layer ...
+        x = self.ffwd(x) # (B, T, C)
         # ... and now that we have added the linear layer above, we can now get the logits by ...
         # logits = self.lm_head(tok_emb) # (B, T, vocab_size)
         logits = self.lm_head(x) # (B, T, vocab_size)
