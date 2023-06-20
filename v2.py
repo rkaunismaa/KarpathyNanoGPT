@@ -168,10 +168,12 @@ class BigramLanguageModel(nn.Module):
         # this layer was added after we coded the FeedForward layer
         # self.ffwd = FeedForward(n_embd)
         # this layer was added after we coded the Block layer
+        # and then later we appended the LayerNorm layer ... 
         self.blocks =  nn.Sequential(
             Block(n_embd, n_head=4),
             Block(n_embd, n_head=4),
-            Block(n_embd, n_head=4)
+            Block(n_embd, n_head=4),
+            nn.LayerNorm(n_embd)
         )
         # ... and to go from token embeddings to logits we will need a linear layer ...
         self.lm_head = nn.Linear(n_embd, vocab_size)
