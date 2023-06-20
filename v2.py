@@ -90,13 +90,14 @@ class Head(nn.Module):
     
 
 class MultiHeadAttention(nn.Module):
+    """ multiple heads of self-attention in parallel """
 
     def __init__(self, num_heads, head_size):
         super().__init__()
         self.heads = nn.ModuleList( [Head(head_size) for _ in range(num_heads)] )
 
     def forward(self, x):
-        return torch.cat([h(x) for h in self.heads], dim=-1)
+        return torch.cat([h(x) for h in self.heads], dim=-1) # concatenate over the channel dimension (B, T, C) = -1
 
 
 
@@ -112,7 +113,9 @@ class BigramLanguageModel(nn.Module):
         # and we are adding a postitional layer so that each position from 0 to block_size -1 will also get its own embedding vector
         self.position_embedding_table = nn.Embedding(block_size, n_embd)
         # this Head layer was added after we coded it ..
-        self.sa_head = Head(n_embd)
+        # self.sa_head = Head(n_embd)
+        # this layer was added after coding MultiHeadAttention ...
+        self.sa_heads = MultiHeadAttention(4, n_embd//4) # i.e. 4 heads of 8-dimensional self-attention
         # ... and to go from token embeddings to logits we will need a linear layer ...
         self.lm_head = nn.Linear(n_embd, vocab_size)
 
@@ -128,7 +131,9 @@ class BigramLanguageModel(nn.Module):
         pos_emb = self.position_embedding_table(torch.arange(T, device=device)) # (T, C)
         x = tok_emb + pos_emb # (B, T, C)
         # and we now pass the output x from above into the self attention head ..
-        x = self.sa_head(x) # apply one head of self attention. (B, T, C)
+        # x = self.sa_head(x) # apply one head of self attention. (B, T, C)
+        # we added this after adding in MultiHeadAttention sa_heads ..
+        x = self.sa_heads(x) # apply one head of self-attention (B, T, C)
         # ... and now that we have added the linear layer above, we can now get the logits by ...
         # logits = self.lm_head(tok_emb) # (B, T, vocab_size)
         logits = self.lm_head(x) # (B, T, vocab_size)
