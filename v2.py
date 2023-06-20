@@ -5,13 +5,19 @@ from torch.nn import functional as F
 # hyperparameters
 batch_size = 32 # how many independent sequences will we process in parallel?
 block_size = 8 # what is the maximum context length for predictions?
-max_iters = 3000
+# max_iters = 3000
+# we also increased the iterations when we lowered the learning rate
+max_iters = 5000
 eval_interval = 300
-learning_rate = 1e-2
+# learning_rate = 1e-2
+# we lowered the learning rate after adding the self attention head to the model
+learning_rate = 1e-3
 device = 'cuda' if torch.cuda.is_available() else 'cpu'
 eval_iters = 200
 n_embd = 32
 # ------------
+
+# resume the video at 1:21:59 ...
 
 torch.manual_seed(1337)
 
@@ -62,6 +68,7 @@ def estimate_loss():
     return out
 
 class Head(nn.Module):
+    """ one head of self attention """
 
     def __init__(self, head_size):
         super().__init__()
@@ -82,13 +89,6 @@ class Head(nn.Module):
         # perform the weighted aggregation of the values
         out = wei @ v # (B, T, T) @ (B, T, C) -> (B, T, C)
         return out
-        
-        
-    
-
-
-
-
 
 # super simple bigram model
 class BigramLanguageModel(nn.Module):
@@ -101,11 +101,15 @@ class BigramLanguageModel(nn.Module):
         self.token_embedding_table = nn.Embedding(vocab_size, n_embd)
         # and we are adding a postitional layer so that each position from 0 to block_size -1 will also get its own embedding vector
         self.position_embedding_table = nn.Embedding(block_size, n_embd)
+        # this Head layer was added after we coded it ..
+        self.sa_head = Head(n_embd)
         # ... and to go from token embeddings to logits we will need a linear layer ...
         self.lm_head = nn.Linear(n_embd, vocab_size)
 
 
     def forward(self, idx, targets=None):
+
+        B, T = idx.shape
 
         # idx and targets are both (B,T) tensor of integers
         # logits = self.token_embedding_table(idx) # (B,T,C) ... so now this no longer gives us logits but token embeddings ...
@@ -113,6 +117,8 @@ class BigramLanguageModel(nn.Module):
         # and now we can add the positional embeddings to the token embeddings ...
         pos_emb = self.position_embedding_table(torch.arange(T, device=device)) # (T, C)
         x = tok_emb + pos_emb # (B, T, C)
+        # and we now pass the output x from above into the self attention head ..
+        x = self.sa_head(x) # apply one head of self attention. (B, T, C)
         # ... and now that we have added the linear layer above, we can now get the logits by ...
         # logits = self.lm_head(tok_emb) # (B, T, vocab_size)
         logits = self.lm_head(x) # (B, T, vocab_size)
@@ -131,9 +137,18 @@ class BigramLanguageModel(nn.Module):
         # idx is (B, T) array of indices in the current context
         for _ in range(max_new_tokens):
             # get the predictions
-            logits, loss = self(idx)
+            # logits, loss = self(idx)
             # focus only on the last time step
+            #logits = logits[:, -1, :] # becomes (B, C)
+            
+            # the above changed after we added Head ...
+            # crop ids to the last block_size tokens
+            idx_cond = idx[:, -block_size]
+            # get the prediction
+            logits, loss = self(idx_cond)
+            # focus on only the last time step
             logits = logits[:, -1, :] # becomes (B, C)
+
             # apply softmax to get probabilities
             probs = F.softmax(logits, dim=-1) # (B, C)
             # sample from the distribution
