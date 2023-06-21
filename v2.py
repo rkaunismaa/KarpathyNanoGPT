@@ -1,3 +1,12 @@
+import time
+from datetime import date
+
+startTime = time.time()
+todaysDate = date.today()
+
+# Run Date: Wednesday, June 21, 2023
+# Run Time: 00:26:21
+
 import torch
 import torch.nn as nn
 from torch.nn import functional as F
@@ -287,3 +296,12 @@ for iter in range(max_iters):
 # generate from the model
 context = torch.zeros((1, 1), dtype=torch.long, device=device)
 print(decode(m.generate(context, max_new_tokens=500)[0].tolist()))
+
+
+
+endTime = time.time()
+
+elapsedTime = time.strftime("%H:%M:%S", time.gmtime(endTime - startTime))
+
+print(todaysDate.strftime('# Run Date: %A, %B %d, %Y'))
+print(f"# Run Time: {elapsedTime}")
