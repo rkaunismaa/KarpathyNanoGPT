@@ -4,3 +4,5 @@ train.bin
 val.bin
 
 __pycache__/
+out-shakespeare-char/
+
