@@ -6,4 +6,7 @@ val.bin
 __pycache__/
 out-shakespeare-char/
 wandb/
+.ipynb_checkpoints/
+
+
 
